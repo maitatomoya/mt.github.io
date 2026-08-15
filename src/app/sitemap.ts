@@ -1,3 +1,6 @@
+// 静的エクスポート（output: 'export'）ではルートを静的生成する指定が必須
+export const dynamic = 'force-static'
+
 import { MetadataRoute } from 'next'
 import { getSortedPostsData, getAllTags } from '@/lib/posts'
 import { getAllDailyDates } from '@/lib/daily'
