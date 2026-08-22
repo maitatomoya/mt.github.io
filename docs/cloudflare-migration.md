@@ -111,24 +111,19 @@ Next.jsの`trailingSlash: true`に対して、Pagesは末尾スラッシュ付�
 2. 独自ドメインを使っていた場合はVercel側のドメイン設定を解除してからCloudflareへ向ける
 3. ローカルの`.vercel`ディレクトリを削除（`.gitignore`済みのためリポジトリには影響しない）
 
-## 自動デプロイの設定（未適用）
+## 自動デプロイの設定
 
-GitHub Actionsによる自動デプロイの設定は、**まだリポジトリに入っていない**。
+`.github/workflows/deploy-cloudflare.yml`により、mainへのpushでビルドとデプロイが自動実行される。手動実行（workflow_dispatch）も可能。
 
-理由は、リポジトリへの書き込みに使っているGitHubのトークンに`workflow`権限がなく、`.github/workflows/`配下のファイルをpushできないため。`gh auth refresh`での権限追加を試みたが、ghの設定に登録されたアカウント名（`MaitaTomoya`）と、GitHubが返す実際のアカウント名（`maitatomoya`）の大文字小文字が食い違っており、照合エラーで完了しなかった。`gh auth login`でのログインし直しが必要。
-
-適用方法は次の2つ。
-
-1. GitHubのWeb UI（Actionsタブ → New workflow → set up a workflow yourself）から、下記の内容を`deploy-cloudflare.yml`として追加する。ブラウザ経由なのでトークンの権限は関係しない
-2. ghの認証をやり直して`workflow`権限を付けたうえで、下記をローカルの`.github/workflows/deploy-cloudflare.yml`に置いてコミットする
-
-いずれの場合も、先にSecretsとVariablesを設定しておくこと。
+動作させるには、GitHubリポジトリのSettings → Secrets and variables → Actionsで以下を設定する。
 
 | 種別     | 名前                    | 値                                                                                    |
 | -------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | Secret   | `CLOUDFLARE_API_TOKEN`  | My Profile → API Tokens → Create Token →「Edit Cloudflare Workers」テンプレートで発行 |
 | Secret   | `CLOUDFLARE_ACCOUNT_ID` | ダッシュボードで確認できるAccount ID                                                  |
 | Variable | `NEXT_PUBLIC_BASE_URL`  | `https://mt-dev-io.pages.dev`（末尾スラッシュなし）                                   |
+
+設定内容：
 
 ```yaml
 name: Deploy to Cloudflare Pages
@@ -175,6 +170,40 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy out --project-name=mt-dev-io --branch=main
 ```
+
+### 適用時に詰まった点（2026-08-22）
+
+このワークフローファイルは、GitHubトークンに`workflow`権限がないためしばらくpushできなかった。原因は次の2点が重なっていたこと。同じ問題は他のリポジトリでも起きるため記録しておく。
+
+**1. `.zshrc`の`GITHUB_TOKEN`が優先されていた**
+
+`gh`コマンドは環境変数`GITHUB_TOKEN`を最優先し、keyringに保存された認証情報を無視する。そのため`gh auth refresh`で権限を追加しても反映されなかった。
+
+```
+The value of the GITHUB_TOKEN environment variable is being used for authentication.
+To have GitHub CLI store credentials instead, first clear the value from the environment.
+```
+
+**2. アカウント名の大文字小文字が食い違っていた**
+
+`gh`の設定（`~/.config/gh/hosts.yml`）には`MaitaTomoya`と登録されていたが、GitHubが返す実際のログイン名は`maitatomoya`。`gh auth refresh`は両者を厳密に照合するため、別アカウントとみなして失敗した。
+
+```
+error refreshing credentials for MaitaTomoya, received credentials for maitatomoya,
+did you use the correct account in the browser?
+```
+
+**解決手順**
+
+```bash
+# 1. .zshrcのGITHUB_TOKENをコメントアウト（MCPのgithubサーバーは
+#    GITHUB_PERSONAL_ACCESS_TOKENを別途使うため影響しない）
+
+# 2. 名前を照合しないgh auth loginでやり直す。refreshでは解決しない
+env -u GITHUB_TOKEN gh auth login -h github.com -p https -s workflow -w
+```
+
+`✓ Logged in as maitatomoya`と小文字で表示されれば成功。`gh auth status`で`workflow`スコープが付いていることを確認する。
 
 ## 補足
 
