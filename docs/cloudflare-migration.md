@@ -106,18 +106,31 @@ Settings → Secrets and variables → Actions で以下を登録する。
 
 `NEXT_PUBLIC_BASE_URL`はサイトマップとOGPの絶対URLに使われる。未設定の場合は`src/app/layout.tsx`と`src/app/sitemap.ts`のフォールバック値（現状はVercelのURL）が使われてしまうため、必ず設定する。
 
-### 3. 初回デプロイ
+### 3. 初回デプロイ（完了：2026-08-22）
 
-ローカルから実行する場合：
+ローカルから以下を実行して公開済み。
 
 ```bash
 npx wrangler login
-npm run deploy
+NEXT_PUBLIC_BASE_URL=https://mt-github-io.mt114r-an.workers.dev npm run deploy
 ```
 
-GitHub Actions経由の場合は、mainへpushするか、Actionsタブから`Deploy to Cloudflare Workers`を手動実行する。
+公開URL：https://mt-github-io.mt114r-an.workers.dev
 
-デプロイ後、`https://mt-github-io.<アカウントのサブドメイン>.workers.dev` で公開される。
+デプロイ後の確認結果：
+
+| 検証項目                                            | 結果                             |
+| --------------------------------------------------- | -------------------------------- |
+| `/`、`/blog/`、`/blog/<slug>/`、`/note/`、`/daily/` | 200                              |
+| `/sitemap.xml`、`/favicon.png`、`/*.svg`            | 200                              |
+| `/blog`（末尾スラッシュなし）                       | 307で`/blog/`へリダイレクト      |
+| 存在しないパス                                      | 404                              |
+| サイトマップ・OGPの絶対URL                          | workers.devのURLに置き換わり済み |
+| ブラウザ表示・コンソールエラー                      | エラーなし                       |
+
+初回デプロイ直後は一部アセットが数十秒ほど404を返すことがある。エッジへの配信が行き渡るまでの一時的なもので、時間をおけば解消する。
+
+`NEXT_PUBLIC_BASE_URL`を指定せずにビルドした場合も、`sitemap.ts`と`layout.tsx`のフォールバック値をworkers.devのURLへ更新済みのため、VercelのURLが焼き込まれることはない。
 
 ### 4. 独自ドメインの設定（任意）
 
@@ -133,15 +146,15 @@ GitHub Actions経由の場合は、mainへpushするか、Actionsタブから`De
 2. 独自ドメインを使っていた場合はVercel側のドメイン設定を解除してからCloudflareへ向ける
 3. ローカルの`.vercel`ディレクトリを削除（`.gitignore`済みのためリポジトリには影響しない）
 
-### 6. フォールバックURLの更新
+### 6. フォールバックURLの更新（完了：2026-08-22）
 
-`src/app/sitemap.ts`と`src/app/layout.tsx`のフォールバック値は、現状どちらもVercelのURL（`https://mt-github-io.vercel.app`）になっている。
+`src/app/sitemap.ts`と`src/app/layout.tsx`のフォールバック値をworkers.devのURLへ更新済み。
 
 ```ts
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-github-io.vercel.app'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-github-io.mt114r-an.workers.dev'
 ```
 
-GitHub Variablesの`NEXT_PUBLIC_BASE_URL`さえ設定されていれば実害はないが、Vercel停止後に変数が未設定のままビルドされると、存在しないURLがサイトマップとOGPに焼き込まれる。移行先のURLが確定した時点で、このフォールバック値も移行先URLへ更新しておく。
+これにより、`NEXT_PUBLIC_BASE_URL`が未設定のままビルドされてもVercelのURLが焼き込まれることはない。**独自ドメインへ移行する際は、この2ファイルの値も併せて更新すること。**
 
 ### 自動デプロイの設定（未適用）
 

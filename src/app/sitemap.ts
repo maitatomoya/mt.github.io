@@ -5,7 +5,7 @@ import { MetadataRoute } from 'next'
 import { getSortedPostsData, getAllTags } from '@/lib/posts'
 import { getAllDailyDates } from '@/lib/daily'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-github-io.vercel.app'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-github-io.mt114r-an.workers.dev'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getSortedPostsData()
