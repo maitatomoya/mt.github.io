@@ -2,6 +2,11 @@
 
 Vercelで運用しているこのブログを、Cloudflare Workers（Static Assets）へ移行するための手順書。
 
+## 移行の動機
+
+- **Vercel Hobbyプランの商用利用制限を回避するため**。このブログを個人ブランディングの親サイトとして運用する構想があり、Hobbyプランのままでは規約上の制約に触れる可能性がある
+- **Cloudflareの無料枠には商用利用の制限がない**。静的アセットの配信は無料かつ無制限で、帯域による課金も発生しない
+
 ## 方式の選定
 
 **Cloudflare Workers の Static Assets を使う**（Cloudflare Pagesではない）。
