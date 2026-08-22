@@ -1,144 +1,109 @@
 # Cloudflareへの移行手順
 
-Vercelで運用しているこのブログを、Cloudflare Workers（Static Assets）へ移行するための手順書。
+Vercelで運用しているこのブログを、Cloudflare Pagesへ移行するための手順書。
 
 ## 移行の動機
 
 - **Vercel Hobbyプランの商用利用制限を回避するため**。このブログを個人ブランディングの親サイトとして運用する構想があり、Hobbyプランのままでは規約上の制約に触れる可能性がある
-- **Cloudflareの無料枠には商用利用の制限がない**。静的アセットの配信は無料かつ無制限で、帯域による課金も発生しない
+- **Cloudflareの無料枠には商用利用の制限がない**。静的サイトの配信は無料で、帯域による課金も発生しない
 
 ## 方式の選定
 
-**Cloudflare Workers の Static Assets を使う**（Cloudflare Pagesではない）。
+**Cloudflare Pagesを使う**（Workersではない）。
 
-| 観点             | 内容                                                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| Cloudflareの推奨 | 新規プロジェクトはPagesではなくWorkers Static Assetsが推奨。Pagesはサポート継続中だが新機能の投資先ではない  |
-| 料金             | 静的アセットへのリクエストは無料かつ無制限。Workerスクリプトを持たない構成なので、リクエスト課金は発生しない |
-| 無料枠の上限     | 1バージョンあたり20,000ファイル、1ファイル25MiBまで                                                          |
-| このサイトの実測 | 7,119ファイル / 合計106MB / 最大ファイル2.9MB → 無料枠に収まる                                               |
+一度はWorkers（Static Assets）で構築したが、公開URLの形が理由でPagesに切り替えた。
 
-このサイトは`output: 'export'`による完全な静的サイトで、APIルートもサーバー機能も使っていないため、Workerスクリプトなしのアセット配信のみで動作する。
+| 観点             | Pages                              | Workers（Static Assets）                            |
+| ---------------- | ---------------------------------- | --------------------------------------------------- |
+| 公開URL          | `<プロジェクト名>.pages.dev`       | `<Worker名>.<アカウントのサブドメイン>.workers.dev` |
+| 名前の取り方     | プロジェクト単位でグローバルに一意 | アカウントの名前空間の下にWorkerが並ぶ              |
+| このサイトの場合 | `mt-dev-io.pages.dev`              | `mt-github-io.mt114r-an.workers.dev`                |
+
+Cloudflareは新規プロジェクトについてPagesではなくWorkers Static Assetsを推奨しており、Pagesは「サポートは継続するが新機能の投資先ではない」という位置づけにある。ただしこのサイトは`output: 'export'`による完全な静的サイトで、APIルートもサーバー機能も使っていない。Pagesの機能で過不足なく、URLが1段短くなる利点の方が大きいと判断した。
+
+同一アカウントで別プロジェクト（`pixsmith`）を既にPagesで運用しており、管理画面が揃うことも理由のひとつ。
 
 ## 運用方針：無料枠のみを使う
 
-このブログはCloudflareの無料枠の範囲内だけで運用する。有料プラン（Workers Paid）へのアップグレードは行わない。
-
-### 課金が発生しない理由
-
-`wrangler.jsonc`に`main`（Workerスクリプトのエントリポイント）を書いていないため、この構成にはWorkerスクリプトが存在しない。公式の料金ページに明記されている通り、**静的アセットへのリクエストは無料かつ無制限**であり、リクエスト数による課金もアクセス数の上限もない。
-
-無料プランの「1日100,000リクエスト」という制限はWorkerスクリプトの実行回数に対するもので、アセット配信のみの構成では消費されない。
-
-### 課金につながるため避ける変更
-
-| 変更                                                                            | 何が起きるか                                                                 |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `wrangler.jsonc`に`main`を追加してWorkerスクリプトを動かす                      | リクエストが課金・上限の対象になる（無料プランは1日100,000リクエストで停止） |
-| [Workers Caching](https://developers.cloudflare.com/workers/cache/)を有効にする | キャッシュ経由の配信が課金対象になり、静的アセットへのリクエストも含まれる   |
-| KV / R2 / D1などのバインディング追加                                            | 各サービスの無料枠と課金体系が別途適用される                                 |
-| Workers Paidへのアップグレード                                                  | 月額5ドルが発生する                                                          |
-
-動的な処理が必要になった場合は、Workerスクリプトを足す前にこの表を確認する。
+Cloudflareの無料枠の範囲内だけで運用する。有料プランへのアップグレードは行わない。
 
 ### 無料プランの上限と現状
 
-| 項目                     | 無料プラン上限 | 有料プラン | 現状       |
-| ------------------------ | -------------- | ---------- | ---------- |
-| 静的アセットのファイル数 | 20,000         | 100,000    | 7,835      |
-| 個別ファイルサイズ       | 25MiB          | 25MiB      | 最大2.94MB |
+| 項目                       | 無料プラン上限 | 有料プラン | 現状        |
+| -------------------------- | -------------- | ---------- | ----------- |
+| サイトのファイル数         | 20,000         | 100,000    | 7,119       |
+| 個別ファイルサイズ         | 25MiB          | 25MiB      | 最大2.94MB  |
+| カスタムドメイン数         | 100            | 250        | 0           |
+| Cloudflare側でのビルド回数 | 500回/月       | 5,000回/月 | 0回（後述） |
 
-ファイル数の上限は無料プランのみ据え置きで、2025年9月に有料プランだけが100,000へ引き上げられた。記事が増えてファイル数が20,000に近づいた場合は、有料化ではなくビルド出力の削減で対応する。上限を超えた場合はデプロイが失敗するだけで、課金は発生しない。
+帯域とリクエスト数に制限はない。静的アセットの配信で課金されることはない。
 
-### 使わない機能
+ファイル数の上限は無料プランのみ据え置きで、2026年1月に有料プランだけが100,000へ引き上げられた。記事が増えて20,000に近づいた場合は、有料化ではなくビルド出力の削減で対応する。上限を超えた場合はデプロイが失敗するだけで、課金は発生しない。
 
-- **Workers Builds**：Cloudflare側のCI機能。本構成ではGitHub Actionsでビルドとデプロイを行うため使わない
-- **Observability**：Workerのログ収集機能。Workerスクリプトがないため出力するログもない
+### ビルド回数の制限を受けない理由
 
-## 完了済みの作業（コード側）
+「Cloudflare側でのビルド回数（500回/月）」は、GitリポジトリをCloudflareに繋いでCloudflare上でビルドさせる方式（Git統合）にのみ適用される。
 
-- `next.config.ts`：`output: 'export'`と`images: { unoptimized: true }`を設定済み
-- `wrangler.jsonc`：アセット配信の設定を追加
-  - `html_handling: "force-trailing-slash"`（`trailingSlash: true`に合わせ、末尾スラッシュ付きを正規URLとする）
-  - `not_found_handling: "404-page"`（Next.jsが生成する`404.html`を404ステータスで返す）
+本構成はGitHub Actionsでビルドし、成果物だけを`wrangler pages deploy`でアップロードする**Direct Upload方式**を採るため、この制限の対象外となる。デプロイ回数を気にする必要はない。
+
+### 課金につながるため避ける変更
+
+| 変更                                                                            | 何が起きるか                                                          |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| [Pages Functions](https://developers.cloudflare.com/pages/functions/)を追加する | Workersとして課金対象になる（無料プランは1日100,000リクエストで停止） |
+| KV / R2 / D1などのバインディング追加                                            | 各サービスの無料枠と課金体系が別途適用される                          |
+| 有料プランへのアップグレード                                                    | 月額5ドルが発生する                                                   |
+
+動的な処理が必要になった場合は、Functionsを足す前にこの表を確認する。
+
+## 完了済みの作業
+
+- `next.config.ts`：`output: 'export'`と`images: { unoptimized: true }`を設定
+- `wrangler.jsonc`：`pages_build_output_dir`にビルド出力先（`./out`）を指定
 - `package.json`：`wrangler`をdevDependencyに追加、`preview`/`deploy`スクリプトを追加
+- `src/app/sitemap.ts`、`src/app/layout.tsx`：フォールバックURLを移行先へ更新
 - `.gitignore`：`.wrangler`を追加
 
-### ローカル検証の結果
-
-`wrangler dev`でビルド成果物を配信し、以下を確認済み（最終確認：2026-08-22）。
-
-| 検証項目                                            | 結果                           |
-| --------------------------------------------------- | ------------------------------ |
-| `/`、`/blog/`、`/blog/<slug>/`、`/note/`、`/daily/` | 200                            |
-| `/sitemap.xml`、`/favicon.png`                      | 200                            |
-| `/blog`（末尾スラッシュなし）                       | 307で`/blog/`へリダイレクト    |
-| 存在しないパス                                      | 404ステータスで404ページを返す |
-| ブラウザ表示・コンソールエラー                      | トップ・記事詳細ともエラーなし |
-
-アセットの規模も無料枠に収まることを確認した。
-
-| 項目               | 実測   | 上限   |
-| ------------------ | ------ | ------ |
-| ファイル数         | 7,119  | 20,000 |
-| 最大ファイルサイズ | 2.94MB | 25MiB  |
-| 合計サイズ         | 106MB  | -      |
-
-## 残作業（Cloudflare側の手動設定）
-
-コードからは実行できない、アカウント操作が必要な作業。
-
-### 1. Cloudflareアカウントの準備
-
-1. Cloudflareにログインし、Account IDを控える（ダッシュボード右側、またはWorkers & Pagesの概要画面）
-2. My Profile → API Tokens → Create Token → **Edit Cloudflare Workers** テンプレートを使用してトークンを発行する
-   - 発行したトークンは一度しか表示されないので確実に控える
-
-### 2. GitHubリポジトリへの登録
-
-Settings → Secrets and variables → Actions で以下を登録する。
-
-| 種別     | 名前                    | 値                                        |
-| -------- | ----------------------- | ----------------------------------------- |
-| Secret   | `CLOUDFLARE_API_TOKEN`  | 手順1で発行したトークン                   |
-| Secret   | `CLOUDFLARE_ACCOUNT_ID` | 手順1のAccount ID                         |
-| Variable | `NEXT_PUBLIC_BASE_URL`  | 公開する最終的なURL（末尾スラッシュなし） |
-
-`NEXT_PUBLIC_BASE_URL`はサイトマップとOGPの絶対URLに使われる。未設定の場合は`src/app/layout.tsx`と`src/app/sitemap.ts`のフォールバック値（現状はVercelのURL）が使われてしまうため、必ず設定する。
-
-### 3. 初回デプロイ（完了：2026-08-22）
+### デプロイ（完了：2026-08-22）
 
 ローカルから以下を実行して公開済み。
 
 ```bash
 npx wrangler login
-NEXT_PUBLIC_BASE_URL=https://mt-github-io.mt114r-an.workers.dev npm run deploy
+npx wrangler pages project create mt-dev-io --production-branch=main
+NEXT_PUBLIC_BASE_URL=https://mt-dev-io.pages.dev npm run deploy
 ```
 
-公開URL：https://mt-github-io.mt114r-an.workers.dev
+公開URL：https://mt-dev-io.pages.dev
 
 デプロイ後の確認結果：
 
-| 検証項目                                            | 結果                             |
-| --------------------------------------------------- | -------------------------------- |
-| `/`、`/blog/`、`/blog/<slug>/`、`/note/`、`/daily/` | 200                              |
-| `/sitemap.xml`、`/favicon.png`、`/*.svg`            | 200                              |
-| `/blog`（末尾スラッシュなし）                       | 307で`/blog/`へリダイレクト      |
-| 存在しないパス                                      | 404                              |
-| サイトマップ・OGPの絶対URL                          | workers.devのURLに置き換わり済み |
-| ブラウザ表示・コンソールエラー                      | エラーなし                       |
+| 検証項目                                            | 結果                           |
+| --------------------------------------------------- | ------------------------------ |
+| `/`、`/blog/`、`/blog/<slug>/`、`/note/`、`/daily/` | 200                            |
+| `/sitemap.xml`、`/favicon.png`                      | 200                            |
+| `/blog`（末尾スラッシュなし）                       | 308で`/blog/`へリダイレクト    |
+| 存在しないパス                                      | 404                            |
+| サイトマップ・OGPの絶対URL                          | pages.devのURLに置き換わり済み |
+| ブラウザ表示・コンソールエラー                      | エラーなし                     |
 
-初回デプロイ直後は一部アセットが数十秒ほど404を返すことがある。エッジへの配信が行き渡るまでの一時的なもので、時間をおけば解消する。
+Next.jsの`trailingSlash: true`に対して、Pagesは末尾スラッシュ付きのURLへ308リダイレクトを返す。追加の設定は不要だった。存在しないパスについても、`out/404.html`を自動的に404ページとして扱う。
 
-`NEXT_PUBLIC_BASE_URL`を指定せずにビルドした場合も、`sitemap.ts`と`layout.tsx`のフォールバック値をworkers.devのURLへ更新済みのため、VercelのURLが焼き込まれることはない。
+## 残作業
 
-### 4. 独自ドメインの設定（任意）
+### 1. GitHub Actionsによる自動デプロイ
 
-独自ドメインを使う場合は、Workers & Pages → 対象Worker → Settings → Domains & Routes → Add → Custom domain から設定する。ドメインのDNSがCloudflareで管理されている必要がある。
+設定内容と適用手順は後述の「自動デプロイの設定（未適用）」を参照。
 
-設定後、`NEXT_PUBLIC_BASE_URL`をそのドメインに変更して再デプロイする。
+### 2. 独自ドメインの設定（任意）
 
-### 5. Vercelの停止
+独自ドメインを使う場合は、Workers & Pages → 対象プロジェクト → Custom domains から設定する。Cloudflare Registrarでドメインを購入すればそのまま接続できる。
+
+設定後、`NEXT_PUBLIC_BASE_URL`と、`src/app/sitemap.ts`・`src/app/layout.tsx`のフォールバック値をそのドメインへ変更して再デプロイする。
+
+なお、Cloudflareは`pages.dev`および`workers.dev`のサブドメインについて「無料ウェブサイト扱いで、ビジネス上重要でない個人・ホビー用途を想定」と位置づけている。商用利用を前提とするなら独自ドメインへの移行を検討する。
+
+### 3. Vercelの停止
 
 新環境が安定して動作することを確認してから実施する。
 
@@ -146,31 +111,27 @@ NEXT_PUBLIC_BASE_URL=https://mt-github-io.mt114r-an.workers.dev npm run deploy
 2. 独自ドメインを使っていた場合はVercel側のドメイン設定を解除してからCloudflareへ向ける
 3. ローカルの`.vercel`ディレクトリを削除（`.gitignore`済みのためリポジトリには影響しない）
 
-### 6. フォールバックURLの更新（完了：2026-08-22）
-
-`src/app/sitemap.ts`と`src/app/layout.tsx`のフォールバック値をworkers.devのURLへ更新済み。
-
-```ts
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-github-io.mt114r-an.workers.dev'
-```
-
-これにより、`NEXT_PUBLIC_BASE_URL`が未設定のままビルドされてもVercelのURLが焼き込まれることはない。**独自ドメインへ移行する際は、この2ファイルの値も併せて更新すること。**
-
-### 自動デプロイの設定（未適用）
+## 自動デプロイの設定（未適用）
 
 GitHub Actionsによる自動デプロイの設定は、**まだリポジトリに入っていない**。
 
-理由は、リポジトリへの書き込みに使っているGitHubのトークンに`workflow`権限がなく、`.github/workflows/`配下のファイルをpushできないため。`gh auth refresh`での権限追加を試みたが、ghの設定に登録されたアカウント名（`MaitaTomoya`）と、GitHubが返す実際のアカウント名（`maitatomoya`）の大文字小文字が食い違っており、照合エラーで完了しなかった。
+理由は、リポジトリへの書き込みに使っているGitHubのトークンに`workflow`権限がなく、`.github/workflows/`配下のファイルをpushできないため。`gh auth refresh`での権限追加を試みたが、ghの設定に登録されたアカウント名（`MaitaTomoya`）と、GitHubが返す実際のアカウント名（`maitatomoya`）の大文字小文字が食い違っており、照合エラーで完了しなかった。`gh auth login`でのログインし直しが必要。
 
 適用方法は次の2つ。
 
 1. GitHubのWeb UI（Actionsタブ → New workflow → set up a workflow yourself）から、下記の内容を`deploy-cloudflare.yml`として追加する。ブラウザ経由なのでトークンの権限は関係しない
 2. ghの認証をやり直して`workflow`権限を付けたうえで、下記をローカルの`.github/workflows/deploy-cloudflare.yml`に置いてコミットする
 
-いずれの場合も、先に「2. GitHubリポジトリへの登録」のSecretsとVariablesを設定しておくこと。
+いずれの場合も、先にSecretsとVariablesを設定しておくこと。
+
+| 種別     | 名前                    | 値                                                                                    |
+| -------- | ----------------------- | ------------------------------------------------------------------------------------- |
+| Secret   | `CLOUDFLARE_API_TOKEN`  | My Profile → API Tokens → Create Token →「Edit Cloudflare Workers」テンプレートで発行 |
+| Secret   | `CLOUDFLARE_ACCOUNT_ID` | ダッシュボードで確認できるAccount ID                                                  |
+| Variable | `NEXT_PUBLIC_BASE_URL`  | `https://mt-dev-io.pages.dev`（末尾スラッシュなし）                                   |
 
 ```yaml
-name: Deploy to Cloudflare Workers
+name: Deploy to Cloudflare Pages
 
 on:
   push:
@@ -212,9 +173,11 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy out --project-name=mt-dev-io --branch=main
 ```
 
 ## 補足
 
-- `compatibility_date`は`2026-05-03`を指定している。ローカルの`wrangler dev`が同梱するランタイムがそれより新しい日付を受け付けないため。アセット配信のみの構成では動作に影響しない
+- `compatibility_date`は`2026-05-03`を指定している。ローカルのwranglerが同梱するランタイムがそれより新しい日付を受け付けないため。静的配信のみの構成では動作に影響しない
 - Node.jsはNext.js 16の要件により20.9.0以上が必要。ローカルで古いバージョンが有効になっている場合はビルドが失敗する（`.nvmrc`は`20`を指定しているため`nvm use`で解決する）
+- `npx wrangler`をリポジトリ外で実行すると、devDependencyのwrangler（動作確認済みのバージョン）ではなく最新版が取得され、Node.js 22以上を要求されて失敗する。必ずリポジトリ内で実行する

@@ -5,7 +5,7 @@ import { MetadataRoute } from 'next'
 import { getSortedPostsData, getAllTags } from '@/lib/posts'
 import { getAllDailyDates } from '@/lib/daily'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-github-io.mt114r-an.workers.dev'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-dev-io.pages.dev'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getSortedPostsData()

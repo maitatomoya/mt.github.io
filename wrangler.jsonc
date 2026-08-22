@@ -1,17 +1,12 @@
-// Workerスクリプト（main）を持たない、静的アセット配信のみの構成。
-// 静的アセットへのリクエストは無料かつ無制限のため、この構成では課金が発生しない。
-// mainの追加やWorkers Cachingの有効化はリクエストを課金対象に変えるため行わない。
-// 詳細はdocs/cloudflare-migration.mdの「運用方針：無料枠のみを使う」を参照。
+// Cloudflare Pagesで静的サイトを配信する設定。
+// ビルド済みの出力（next build の output: 'export'）をそのまま配信するだけで、
+// サーバー機能は使わない。無料枠のみで運用する方針のため、
+// Functions（Pages上のサーバー処理）は追加しない。
+// 詳細はdocs/cloudflare-migration.mdを参照。
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "mt-github-io",
+  "name": "mt-dev-io",
   "compatibility_date": "2026-05-03",
-  "assets": {
-    // next build（output: 'export'）の出力先
-    "directory": "./out",
-    // next.config.tsのtrailingSlash: trueに合わせ、末尾スラッシュ付きを正規URLとする
-    "html_handling": "force-trailing-slash",
-    // 未知のパスはNext.jsが生成した404.htmlを404ステータスで返す
-    "not_found_handling": "404-page"
-  }
+  // next build（output: 'export'）の出力先
+  "pages_build_output_dir": "./out"
 }
