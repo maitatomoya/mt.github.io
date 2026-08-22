@@ -1,5 +1,5 @@
 ---
-id: 88
+id: 90
 title: "WAI-ARIA APG パターン比較: status / alert / tooltip の使い分け"
 tags: [accessibility, aria, wai-aria, apg, frontend]
 create: "2026-06-26 11:15"

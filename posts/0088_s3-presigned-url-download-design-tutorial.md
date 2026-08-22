@@ -1,5 +1,5 @@
 ---
-id: 87
+id: 88
 title: "S3署名付きURLでファイルDL機能を作る — 架空サービス『PhotoFox』で学ぶ AWS とセキュリティ用語"
 tags: [AWS, S3, セキュリティ, presigned URL, IAM, CloudFront, CSRF, IDOR, 設計]
 create: "2026-06-16 12:00"
