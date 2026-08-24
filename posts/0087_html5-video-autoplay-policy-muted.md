@@ -1,5 +1,5 @@
 ---
-id: 86
+id: 87
 title: "HTML5 video の autoplay が突然動かない — muted 属性とブラウザのポリシーを理解する"
 tags: [HTML, JavaScript, ブラウザ, フロントエンド, アクセシビリティ]
 create: "2026-06-04 18:00"

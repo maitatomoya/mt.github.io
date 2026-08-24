@@ -1,5 +1,5 @@
 ---
-id: 83
+id: 84
 title: "ベクトル検索とRAG入門 — 仕組みから実装例まで、具体例で学ぶAI検索の基礎"
 tags: [AI, LLM, RAG, ベクトル検索, OpenAI, Embedding]
 create: "2026-04-14 23:21"

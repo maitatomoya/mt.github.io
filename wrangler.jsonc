@@ -1,0 +1,12 @@
+// Cloudflare Pagesで静的サイトを配信する設定。
+// ビルド済みの出力（next build の output: 'export'）をそのまま配信するだけで、
+// サーバー機能は使わない。無料枠のみで運用する方針のため、
+// Functions（Pages上のサーバー処理）は追加しない。
+// 詳細はdocs/cloudflare-migration.mdを参照。
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mt-dev-io",
+  "compatibility_date": "2026-05-03",
+  // next build（output: 'export'）の出力先
+  "pages_build_output_dir": "./out"
+}

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-github-io.vercel.app'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-dev-io.pages.dev'
 
 export const metadata: Metadata = {
   title: {

@@ -1,8 +1,11 @@
+// 静的エクスポート（output: 'export'）ではルートを静的生成する指定が必須
+export const dynamic = 'force-static'
+
 import { MetadataRoute } from 'next'
 import { getSortedPostsData, getAllTags } from '@/lib/posts'
 import { getAllDailyDates } from '@/lib/daily'
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-github-io.vercel.app'
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://mt-dev-io.pages.dev'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const posts = getSortedPostsData()

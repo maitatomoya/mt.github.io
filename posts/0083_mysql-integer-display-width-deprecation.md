@@ -1,5 +1,5 @@
 ---
-id: 82
+id: 83
 title: "MySQL の tinyint(1) と tinyint は何が違う？— 整数型 display width 非推奨の話"
 tags: [MySQL, データベース, DB設計]
 create: "2026-04-10 10:00"
